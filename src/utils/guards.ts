@@ -40,7 +40,7 @@ const isTimePoint = (value: unknown): value is TimePoint => {
     isNumber(value.rn) &&
     isNumber(value.line) &&
     isSide(value.side) &&
-    isString(value.unit) &&
+    (value.unit === null || isString(value.unit)) &&
     isNumber(value.propId) &&
     isString(value.recordedAt) &&
     isNumber(value.oddsDecimal) &&

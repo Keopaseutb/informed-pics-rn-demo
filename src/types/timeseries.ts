@@ -4,7 +4,7 @@ export type TimePoint = {
   rn: number;
   line: number;
   side: Side;
-  unit: string;
+  unit: string | null;
   propId: number;
   recordedAt: string;
   oddsDecimal: number;
