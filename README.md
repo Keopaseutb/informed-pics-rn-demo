@@ -29,6 +29,10 @@ npm start
 
 Open Expo Go → Scan QR.
 
+## Demo video
+
+[iOS demo](https://drive.google.com/file/d/1v1twY8M87pcGgIHmnK4od6YjbCRfrCkk/view?usp=sharing) — walkthrough of the app running in Expo Go.
+
 ## Feature → Why → JD Mapping
 
 | Feature | Why it matters | JD mapping |
