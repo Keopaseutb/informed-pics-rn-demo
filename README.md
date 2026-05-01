@@ -21,6 +21,10 @@ It demonstrates:
 - mobile interaction patterns
 - debug / parity surfaces for diagnosis
 
+## Data contract
+
+The repository layer owns data loading, validation, caching, and time ordering. Selectors receive repository data as already sorted and should only partition or shape it for presentation.
+
 ## Runtime support model
 
 **Primary supported setup:** Expo Go on **Expo SDK 54**
@@ -57,14 +61,17 @@ npm start
 
 Open Expo Go → Scan QR.
 
-Expo Go / SDK 54 setup notes
+## Expo Go / SDK 54 setup notes
+
 If your environment is on a newer Expo package set and you need to align to the supported runtime:
+
 ```
 npx expo install expo@~54
 npx expo install --fix
 npx expo start -c --tunnel
 ```
-Alternate run paths
+
+## Alternate run paths
 
 If you want to experiment with a newer Expo SDK or a custom dev build, treat that as a separate branch/workstream.
 
