@@ -2,23 +2,51 @@
 
 ## Overview
 
-Mini prediction-market UI demo built with Expo (React Native). The app uses static JSON exports for deterministic data and focuses on correctness, cross-platform parity, and performance hygiene.
+The app uses static JSON exports for deterministic behavior and focuses on:
+- correctness
+- trust-sensitive UI
+- cross-platform parity
+- performance hygiene
+- supportability / debug visibility
 
-## Branch note
+## What this project is
 
-The demo is intended to run in **Expo Go**. The `expo55-devbuild` path requires a custom dev build (Xcode/EAS).
+This demo is a frontend proof-point built to show production-shaped mobile product thinking, not just screen mockups.
 
-## SDK/runtime note
+It demonstrates:
+- typed data boundaries
+- repository / selector layering
+- validate-once data loading
+- probability normalization and trust cues
+- mobile interaction patterns
+- debug / parity surfaces for diagnosis
 
-**Working setup:** Expo SDK 54 for Expo Go compatibility.
+## Runtime support model
 
-If you need to downgrade to SDK 54, the terminal sequence is:
+**Primary supported setup:** Expo Go on **Expo SDK 54**
 
-```
-npx expo install expo@~54
-npx expo install --fix
-npx expo start -c --tunnel
-```
+This is the main supported path because the project prioritizes:
+- reproducible setup
+- fast reviewer onboarding
+- reliable demo execution
+
+In other words, this repo favors a stable “works now” path over chasing the newest Expo runtime immediately.
+
+## Experimental path
+
+A newer Expo SDK / dev-build path may be explored separately, but that is **not** the primary supported setup for this repo right now.
+
+If you are evaluating or running this project, use the Expo Go + SDK 54 path first.
+
+## Why SDK 54 is the default
+
+The app is intended to be easy to run in Expo Go without requiring:
+- a custom native build
+- full Xcode simulator setup
+- EAS/dev-build-only workflow
+
+That tradeoff is intentional. For this demo, reproducibility is more important than newest-SDK adoption.
+
 
 ## Quick start
 
@@ -28,6 +56,19 @@ npm start
 ```
 
 Open Expo Go → Scan QR.
+
+Expo Go / SDK 54 setup notes
+If your environment is on a newer Expo package set and you need to align to the supported runtime:
+```
+npx expo install expo@~54
+npx expo install --fix
+npx expo start -c --tunnel
+```
+Alternate run paths
+
+If you want to experiment with a newer Expo SDK or a custom dev build, treat that as a separate branch/workstream.
+
+That path is currently considered experimental compared with the primary Expo Go setup above.
 
 ## Demo video
 
