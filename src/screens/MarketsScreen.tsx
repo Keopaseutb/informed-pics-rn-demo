@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Market } from "../types/market";
 import { RootStackParamList } from "../types/nav";
 import { MarketCard } from "../components/MarketCard";
 import { colors, spacing, typography } from "../theme";
@@ -24,15 +23,16 @@ import {
   getMarkets,
 } from "../services/marketRepository";
 import { selectMarketHeader } from "../services/selectors";
+import {
+  buildMarketListViewModel,
+  MarketListItem,
+} from "../services/marketListViewModel";
 
 const DEMO_LATENCY_MS = 250;
+const SEARCH_DEBOUNCE_MS = 200;
 const HEADER_HEIGHT = 36;
 const CARD_HEIGHT = 210;
 const CARD_ROW_HEIGHT = CARD_HEIGHT + spacing.sm * 2;
-
-type FlatItem =
-  | { type: "header"; key: string; title: string }
-  | { type: "item"; key: string; market: Market };
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, "Markets">;
 
@@ -41,6 +41,8 @@ export const MarketsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fontScale = PixelRatio.getFontScale();
   const allowItemLayout = fontScale <= 1.1;
@@ -60,32 +62,15 @@ export const MarketsScreen = () => {
     return meta;
   }, [markets]);
 
-  const flatData = useMemo<FlatItem[]>(() => {
-    const data: FlatItem[] = [];
-    categories.forEach((category) => {
-      data.push({
-        type: "header",
-        key: `header-${category}`,
-        title: category,
-      });
-      grouped[category].forEach((market) => {
-        data.push({
-          type: "item",
-          key: market.id,
-          market,
-        });
-      });
-    });
-    return data;
-  }, [categories, grouped]);
-
-  const stickyHeaderIndices = useMemo(() => {
-    const indices: number[] = [];
-    flatData.forEach((item, index) => {
-      if (item.type === "header") indices.push(index);
-    });
-    return indices;
-  }, [flatData]);
+  const { flatData, stickyHeaderIndices } = useMemo(
+    () =>
+      buildMarketListViewModel({
+        categories,
+        grouped,
+        query: debouncedSearchQuery,
+      }),
+    [categories, debouncedSearchQuery, grouped]
+  );
 
   const layoutCache = useMemo(() => {
     let offset = 0;
@@ -98,7 +83,7 @@ export const MarketsScreen = () => {
   }, [flatData]);
 
   const getItemLayout = useCallback(
-    (_: ArrayLike<FlatItem> | null | undefined, index: number) => {
+    (_: ArrayLike<MarketListItem> | null | undefined, index: number) => {
       const layout = layoutCache[index];
       return { ...layout, index };
     },
@@ -112,7 +97,7 @@ export const MarketsScreen = () => {
     [navigation]
   );
 
-  const renderItem: ListRenderItem<FlatItem> = useCallback(
+  const renderItem: ListRenderItem<MarketListItem> = useCallback(
     ({ item }) => {
       if (item.type === "header") {
         return (
@@ -148,6 +133,23 @@ export const MarketsScreen = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), DEMO_LATENCY_MS);
   }, []);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      searchDebounceRef.current = null;
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), DEMO_LATENCY_MS);
