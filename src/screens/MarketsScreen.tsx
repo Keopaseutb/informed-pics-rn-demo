@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
   PixelRatio,
 } from "react-native";
@@ -39,6 +40,7 @@ export const MarketsScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fontScale = PixelRatio.getFontScale();
   const allowItemLayout = fontScale <= 1.1;
@@ -163,6 +165,22 @@ export const MarketsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.searchRow}>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search markets"
+          placeholderTextColor={colors.textSecondary}
+          style={styles.searchInput}
+          autoCorrect={false}
+          autoCapitalize="none"
+          autoComplete="off"
+          clearButtonMode="while-editing"
+          returnKeyType="search"
+          accessibilityLabel="Search markets"
+          accessibilityHint="Enter a search query"
+        />
+      </View>
       <FlatList
         data={flatData}
         renderItem={renderItem}
@@ -189,6 +207,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  searchRow: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.background,
+  },
+  searchInput: {
+    ...typography.body,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    minHeight: 44,
   },
   loadingContainer: {
     flex: 1,
