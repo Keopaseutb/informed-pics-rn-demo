@@ -4,7 +4,9 @@ import {
   FlatList,
   ListRenderItem,
   Platform,
+  Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +32,7 @@ import {
 
 const DEMO_LATENCY_MS = 250;
 const SEARCH_DEBOUNCE_MS = 200;
+const ALL_CATEGORIES = "All";
 const HEADER_HEIGHT = 36;
 const CARD_HEIGHT = 210;
 const CARD_ROW_HEIGHT = CARD_HEIGHT + spacing.sm * 2;
@@ -42,6 +45,7 @@ export const MarketsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fontScale = PixelRatio.getFontScale();
@@ -68,8 +72,10 @@ export const MarketsScreen = () => {
         categories,
         grouped,
         query: debouncedSearchQuery,
+        selectedCategory:
+          selectedCategory === ALL_CATEGORIES ? null : selectedCategory,
       }),
-    [categories, debouncedSearchQuery, grouped]
+    [categories, debouncedSearchQuery, grouped, selectedCategory]
   );
 
   const layoutCache = useMemo(() => {
@@ -95,6 +101,36 @@ export const MarketsScreen = () => {
       navigation.navigate("MarketDetail", { propId });
     },
     [navigation]
+  );
+
+  const renderCategoryChip = useCallback(
+    (category: string) => {
+      const selected = selectedCategory === category;
+
+      return (
+        <Pressable
+          key={category}
+          onPress={() => setSelectedCategory(category)}
+          style={[styles.filterChip, selected && styles.filterChipSelected]}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: selected }}
+          accessibilityLabel={
+            category === ALL_CATEGORIES ? "All markets" : `${category} markets`
+          }
+          accessibilityHint="Selects this category filter"
+        >
+          <Text
+            style={[
+              styles.filterChipText,
+              selected && styles.filterChipTextSelected,
+            ]}
+          >
+            {category}
+          </Text>
+        </Pressable>
+      );
+    },
+    [selectedCategory]
   );
 
   const renderItem: ListRenderItem<MarketListItem> = useCallback(
@@ -183,6 +219,19 @@ export const MarketsScreen = () => {
           accessibilityHint="Enter a search query"
         />
       </View>
+      <View
+        style={styles.filterRow}
+        accessibilityLabel="Market category filters"
+        accessibilityRole="radiogroup"
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {[ALL_CATEGORIES, ...categories].map(renderCategoryChip)}
+        </ScrollView>
+      </View>
       <FlatList
         data={flatData}
         renderItem={renderItem}
@@ -193,6 +242,14 @@ export const MarketsScreen = () => {
         windowSize={5}
         maxToRenderPerBatch={10}
         removeClippedSubviews={Platform.OS === "android"}
+        ListEmptyComponent={
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsTitle}>No markets found</Text>
+            <Text style={styles.noResultsText}>
+              Try a different search or category.
+            </Text>
+          </View>
+        }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -225,6 +282,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     minHeight: 44,
+  },
+  filterRow: {
+    backgroundColor: colors.background,
+    paddingBottom: spacing.sm,
+  },
+  filterContent: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  filterChip: {
+    minHeight: 36,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  filterChipSelected: {
+    borderColor: colors.yesGreen,
+    backgroundColor: colors.surfaceElevated,
+  },
+  filterChipText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  filterChipTextSelected: {
+    color: colors.textPrimary,
+  },
+  noResultsContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    alignItems: "center",
+  },
+  noResultsTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  noResultsText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,

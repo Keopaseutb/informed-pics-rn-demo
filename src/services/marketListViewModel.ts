@@ -8,6 +8,7 @@ type BuildMarketListViewModelArgs = {
   categories: string[];
   grouped: Record<string, Market[]>;
   query: string;
+  selectedCategory?: string | null;
 };
 
 export const normalizeMarketSearchQuery = (query: string): string =>
@@ -28,12 +29,15 @@ export const buildMarketListViewModel = ({
   categories,
   grouped,
   query,
+  selectedCategory,
 }: BuildMarketListViewModelArgs) => {
   const normalizedQuery = normalizeMarketSearchQuery(query);
   const flatData: MarketListItem[] = [];
   const stickyHeaderIndices: number[] = [];
 
   categories.forEach((category) => {
+    if (selectedCategory && category !== selectedCategory) return;
+
     const categoryMarkets = grouped[category] ?? [];
     const filteredMarkets = categoryMarkets.filter((market) =>
       marketMatchesQuery(market, normalizedQuery)
