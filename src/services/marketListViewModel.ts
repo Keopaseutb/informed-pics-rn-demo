@@ -1,10 +1,12 @@
 import { Market } from "../types/market";
+import { selectMarketHeader } from "./selectors";
 
 export type MarketListItem =
   | { type: "header"; key: string; title: string }
   | { type: "item"; key: string; market: Market };
 
 type BuildMarketListViewModelArgs = {
+  markets: Market[];
   categories: string[];
   grouped: Record<string, Market[]>;
   query: string;
@@ -26,14 +28,20 @@ const marketMatchesQuery = (market: Market, query: string): boolean => {
 };
 
 export const buildMarketListViewModel = ({
+  markets,
   categories,
   grouped,
   query,
   selectedCategory,
 }: BuildMarketListViewModelArgs) => {
   const normalizedQuery = normalizeMarketSearchQuery(query);
+  const marketMeta = new Map<number, ReturnType<typeof selectMarketHeader>>();
   const flatData: MarketListItem[] = [];
   const stickyHeaderIndices: number[] = [];
+
+  markets.forEach((market) => {
+    marketMeta.set(market.propid, selectMarketHeader(market));
+  });
 
   categories.forEach((category) => {
     if (selectedCategory && category !== selectedCategory) return;
@@ -61,5 +69,5 @@ export const buildMarketListViewModel = ({
     });
   });
 
-  return { flatData, stickyHeaderIndices };
+  return { flatData, stickyHeaderIndices, marketMeta };
 };

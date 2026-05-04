@@ -45,6 +45,7 @@ const rushingMarket = makeMarket({
 });
 
 const categories = ["Receiving Yards", "Receptions", "Rushing Yards"];
+const markets = [receivingMarket, receptionsMarket, rushingMarket];
 const grouped = {
   "Receiving Yards": [receivingMarket],
   Receptions: [receptionsMarket],
@@ -66,6 +67,7 @@ const headerTitles = (
 describe("buildMarketListViewModel", () => {
   it("filters to a selected category", () => {
     const result = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "",
@@ -79,12 +81,14 @@ describe("buildMarketListViewModel", () => {
 
   it("treats null and omitted selectedCategory as All", () => {
     const nullCategory = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "",
       selectedCategory: null,
     });
     const omittedCategory = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "",
@@ -100,6 +104,7 @@ describe("buildMarketListViewModel", () => {
 
   it("composes query and selected category filters", () => {
     const result = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "austin",
@@ -112,6 +117,7 @@ describe("buildMarketListViewModel", () => {
 
   it("normalizes trimmed and case-insensitive queries", () => {
     const result = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: " AUSTIN ",
@@ -123,6 +129,7 @@ describe("buildMarketListViewModel", () => {
 
   it("returns empty data and sticky headers when there are no matches", () => {
     const result = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "mahomes",
@@ -134,6 +141,7 @@ describe("buildMarketListViewModel", () => {
 
   it("does not emit empty headers for categories without matches", () => {
     const result = buildMarketListViewModel({
+      markets,
       categories,
       grouped,
       query: "receiving",
@@ -141,5 +149,23 @@ describe("buildMarketListViewModel", () => {
 
     expect(headerTitles(result.flatData)).toEqual(["Receiving Yards"]);
     expect(itemIds(result.flatData)).toEqual(["receiving"]);
+  });
+
+  it("returns market metadata keyed by propid", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "",
+    });
+
+    expect(result.marketMeta.get(receivingMarket.propid)).toMatchObject({
+      playerName: "A.J. Barner",
+      displayTitle: "A.J. Barner Receiving Yards O/U 25.5",
+      line: 1.5,
+      unit: null,
+    });
+    expect(result.marketMeta.get(receptionsMarket.propid)).toBeDefined();
+    expect(result.marketMeta.get(rushingMarket.propid)).toBeDefined();
   });
 });

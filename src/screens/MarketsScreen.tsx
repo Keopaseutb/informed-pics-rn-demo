@@ -19,12 +19,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/nav";
 import { MarketCard } from "../components/MarketCard";
 import { colors, spacing, typography } from "../theme";
-import {
-  getCategories,
-  getGroupedByCategory,
-  getMarkets,
-} from "../services/marketRepository";
-import { selectMarketHeader } from "../services/selectors";
+import { getMarketListData } from "../services/marketRepository";
 import {
   buildMarketListViewModel,
   MarketListItem,
@@ -47,35 +42,22 @@ export const MarketsScreen = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fontScale = PixelRatio.getFontScale();
   const allowItemLayout = fontScale <= 1.1;
 
-  const markets = useMemo(() => getMarkets(), []);
-  const grouped = useMemo(() => getGroupedByCategory(), []);
-  const categories = useMemo(() => getCategories(), []);
+  const marketListData = useMemo(() => getMarketListData(), []);
 
-  const marketMeta = useMemo(() => {
-    const meta = new Map<
-      number,
-      ReturnType<typeof selectMarketHeader>
-    >();
-    markets.forEach((market) => {
-      meta.set(market.propid, selectMarketHeader(market));
-    });
-    return meta;
-  }, [markets]);
-
-  const { flatData, stickyHeaderIndices } = useMemo(
+  const { flatData, stickyHeaderIndices, marketMeta } = useMemo(
     () =>
       buildMarketListViewModel({
-        categories,
-        grouped,
+        ...marketListData,
         query: debouncedSearchQuery,
         selectedCategory:
           selectedCategory === ALL_CATEGORIES ? null : selectedCategory,
       }),
-    [categories, debouncedSearchQuery, grouped, selectedCategory]
+    [debouncedSearchQuery, marketListData, selectedCategory]
   );
 
   const layoutCache = useMemo(() => {
@@ -166,8 +148,15 @@ export const MarketsScreen = () => {
   );
 
   const onRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), DEMO_LATENCY_MS);
+    refreshTimerRef.current = setTimeout(() => {
+      setRefreshing(false);
+      refreshTimerRef.current = null;
+    }, DEMO_LATENCY_MS);
   }, []);
 
   useEffect(() => {
@@ -190,6 +179,14 @@ export const MarketsScreen = () => {
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), DEMO_LATENCY_MS);
     return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
   }, []);
 
   if (loading) {
@@ -229,7 +226,7 @@ export const MarketsScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContent}
         >
-          {[ALL_CATEGORIES, ...categories].map(renderCategoryChip)}
+          {[ALL_CATEGORIES, ...marketListData.categories].map(renderCategoryChip)}
         </ScrollView>
       </View>
       <FlatList
