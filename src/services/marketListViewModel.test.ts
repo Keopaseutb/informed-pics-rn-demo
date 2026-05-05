@@ -1,5 +1,9 @@
 import { Market } from "../types/market";
-import { buildMarketListViewModel, deriveMarketListState } from "./marketListViewModel";
+import {
+  buildMarketListViewModel,
+  deriveMarketListState,
+  normalizeMarketSearchQuery,
+} from "./marketListViewModel";
 
 const makeMarket = (overrides: Partial<Market>): Market => ({
   id: "market",
@@ -64,7 +68,111 @@ const headerTitles = (
     .filter((item) => item.type === "header")
     .map((item) => item.title);
 
+describe("normalizeMarketSearchQuery", () => {
+  it("trims and lowercases", () => {
+    expect(normalizeMarketSearchQuery("  MixedCase  ")).toBe("mixedcase");
+  });
+
+  it("returns empty string for whitespace-only", () => {
+    expect(normalizeMarketSearchQuery("   ")).toBe("");
+  });
+});
+
 describe("buildMarketListViewModel", () => {
+  it("with empty query returns all markets in category order", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "",
+    });
+
+    expect(headerTitles(result.flatData)).toEqual([
+      "Receiving Yards",
+      "Receptions",
+      "Rushing Yards",
+    ]);
+    expect(itemIds(result.flatData)).toEqual([
+      "receiving",
+      "receptions",
+      "rushing",
+    ]);
+    expect(result.stickyHeaderIndices).toEqual([0, 2, 4]);
+  });
+
+  it("filters by player name", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "barner",
+    });
+
+    expect(headerTitles(result.flatData)).toEqual(["Receiving Yards"]);
+    expect(itemIds(result.flatData)).toEqual(["receiving"]);
+  });
+
+  it("filters by question text", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "kenneth walker rushing",
+    });
+
+    expect(headerTitles(result.flatData)).toEqual(["Rushing Yards"]);
+    expect(itemIds(result.flatData)).toEqual(["rushing"]);
+  });
+
+  it("filters by category text", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "receiving yards",
+    });
+
+    expect(headerTitles(result.flatData)).toEqual(["Receiving Yards"]);
+    expect(itemIds(result.flatData)).toEqual(["receiving"]);
+  });
+
+  it("filters by event label", () => {
+    const result = buildMarketListViewModel({
+      markets,
+      categories,
+      grouped,
+      query: "patriots",
+    });
+
+    expect(headerTitles(result.flatData)).toEqual([
+      "Receiving Yards",
+      "Receptions",
+      "Rushing Yards",
+    ]);
+    expect(itemIds(result.flatData)).toEqual([
+      "receiving",
+      "receptions",
+      "rushing",
+    ]);
+  });
+
+  it("produces stable output for identical inputs", () => {
+    const args = {
+      markets,
+      categories,
+      grouped,
+      query: "hooper",
+      selectedCategory: "Receptions" as const,
+    };
+    const a = buildMarketListViewModel(args);
+    const b = buildMarketListViewModel(args);
+    expect(a.flatData).toEqual(b.flatData);
+    expect(a.stickyHeaderIndices).toEqual(b.stickyHeaderIndices);
+    expect(Array.from(a.marketMeta.entries())).toEqual(
+      Array.from(b.marketMeta.entries())
+    );
+  });
+
   it("filters to a selected category", () => {
     const result = buildMarketListViewModel({
       markets,
@@ -221,6 +329,16 @@ describe("deriveMarketListState", () => {
     expect(state).toBe("ready");
   });
 
+  it("applies precedence: error over ready when hasError is true", () => {
+    const state = deriveMarketListState({
+      loading: false,
+      hasError: true,
+      marketCount: 10,
+      flatDataCount: 20,
+    });
+    expect(state).toBe("error");
+  });
+
   it("applies precedence: loading > error > empty > noResults", () => {
     const loadingState = deriveMarketListState({
       loading: true,
@@ -251,5 +369,44 @@ describe("deriveMarketListState", () => {
     expect(errorState).toBe("error");
     expect(emptyState).toBe("empty");
     expect(noResultsState).toBe("noResults");
+  });
+
+  it("returns mutually exclusive states: each input maps to exactly one list state", () => {
+    const states = new Set<ReturnType<typeof deriveMarketListState>>([
+      deriveMarketListState({
+        loading: true,
+        hasError: false,
+        marketCount: 1,
+        flatDataCount: 1,
+      }),
+      deriveMarketListState({
+        loading: false,
+        hasError: true,
+        marketCount: 1,
+        flatDataCount: 1,
+      }),
+      deriveMarketListState({
+        loading: false,
+        hasError: false,
+        marketCount: 0,
+        flatDataCount: 0,
+      }),
+      deriveMarketListState({
+        loading: false,
+        hasError: false,
+        marketCount: 2,
+        flatDataCount: 0,
+      }),
+      deriveMarketListState({
+        loading: false,
+        hasError: false,
+        marketCount: 2,
+        flatDataCount: 3,
+      }),
+    ]);
+
+    expect(states).toEqual(
+      new Set(["loading", "error", "empty", "noResults", "ready"])
+    );
   });
 });
