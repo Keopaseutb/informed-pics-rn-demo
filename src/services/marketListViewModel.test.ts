@@ -1,5 +1,5 @@
 import { Market } from "../types/market";
-import { buildMarketListViewModel } from "./marketListViewModel";
+import { buildMarketListViewModel, deriveMarketListState } from "./marketListViewModel";
 
 const makeMarket = (overrides: Partial<Market>): Market => ({
   id: "market",
@@ -167,5 +167,89 @@ describe("buildMarketListViewModel", () => {
     });
     expect(result.marketMeta.get(receptionsMarket.propid)).toBeDefined();
     expect(result.marketMeta.get(rushingMarket.propid)).toBeDefined();
+  });
+});
+
+describe("deriveMarketListState", () => {
+  it("returns loading when loading is true", () => {
+    const state = deriveMarketListState({
+      loading: true,
+      hasError: true,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    expect(state).toBe("loading");
+  });
+
+  it("returns error when hasError is true and not loading", () => {
+    const state = deriveMarketListState({
+      loading: false,
+      hasError: true,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    expect(state).toBe("error");
+  });
+
+  it("returns empty when no markets exist", () => {
+    const state = deriveMarketListState({
+      loading: false,
+      hasError: false,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    expect(state).toBe("empty");
+  });
+
+  it("returns noResults when markets exist but filtered rows are empty", () => {
+    const state = deriveMarketListState({
+      loading: false,
+      hasError: false,
+      marketCount: 3,
+      flatDataCount: 0,
+    });
+    expect(state).toBe("noResults");
+  });
+
+  it("returns ready when data exists and filtered rows exist", () => {
+    const state = deriveMarketListState({
+      loading: false,
+      hasError: false,
+      marketCount: 3,
+      flatDataCount: 5,
+    });
+    expect(state).toBe("ready");
+  });
+
+  it("applies precedence: loading > error > empty > noResults", () => {
+    const loadingState = deriveMarketListState({
+      loading: true,
+      hasError: true,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    const errorState = deriveMarketListState({
+      loading: false,
+      hasError: true,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    const emptyState = deriveMarketListState({
+      loading: false,
+      hasError: false,
+      marketCount: 0,
+      flatDataCount: 0,
+    });
+    const noResultsState = deriveMarketListState({
+      loading: false,
+      hasError: false,
+      marketCount: 2,
+      flatDataCount: 0,
+    });
+
+    expect(loadingState).toBe("loading");
+    expect(errorState).toBe("error");
+    expect(emptyState).toBe("empty");
+    expect(noResultsState).toBe("noResults");
   });
 });

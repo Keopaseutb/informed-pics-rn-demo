@@ -19,9 +19,13 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/nav";
 import { MarketCard } from "../components/MarketCard";
 import { colors, spacing, typography } from "../theme";
-import { getMarketListData } from "../services/marketRepository";
+import {
+  getMarketListData,
+  getValidationResults,
+} from "../services/marketRepository";
 import {
   buildMarketListViewModel,
+  deriveMarketListState,
   MarketListItem,
 } from "../services/marketListViewModel";
 
@@ -48,6 +52,7 @@ export const MarketsScreen = () => {
   const allowItemLayout = fontScale <= 1.1;
 
   const marketListData = useMemo(() => getMarketListData(), []);
+  const validationResults = useMemo(() => getValidationResults(), []);
 
   const { flatData, stickyHeaderIndices, marketMeta } = useMemo(
     () =>
@@ -126,7 +131,12 @@ export const MarketsScreen = () => {
       }
       const market = item.market;
       const meta = marketMeta.get(market.propid);
-      if (!meta) return null;
+      if (!meta) {
+        if (__DEV__) {
+          console.warn(`Missing market metadata for propId ${market.propid}`);
+        }
+        return null;
+      }
       return (
         <MarketCard
           propId={market.propid}
@@ -189,11 +199,42 @@ export const MarketsScreen = () => {
     };
   }, []);
 
-  if (loading) {
+  const hasBlockingError =
+    validationResults.valid === 0 && validationResults.errors.length > 0;
+  const listState = deriveMarketListState({
+    loading,
+    hasError: hasBlockingError,
+    marketCount: marketListData.markets.length,
+    flatDataCount: flatData.length,
+  });
+
+  if (listState === "loading") {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator color={colors.textPrimary} />
         <Text style={styles.loadingText}>Loading markets...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (listState === "error") {
+    return (
+      <SafeAreaView style={styles.stateContainer}>
+        <Text style={styles.stateTitle}>Unable to load markets</Text>
+        <Text style={styles.stateSubtitle}>
+          Please try again or check the data source.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (listState === "empty") {
+    return (
+      <SafeAreaView style={styles.stateContainer}>
+        <Text style={styles.stateTitle}>No markets available</Text>
+        <Text style={styles.stateSubtitle}>
+          There is no data to display right now.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -240,12 +281,14 @@ export const MarketsScreen = () => {
         maxToRenderPerBatch={10}
         removeClippedSubviews={Platform.OS === "android"}
         ListEmptyComponent={
-          <View style={styles.noResultsContainer}>
-            <Text style={styles.noResultsTitle}>No markets found</Text>
-            <Text style={styles.noResultsText}>
-              Try a different search or category.
-            </Text>
-          </View>
+          listState === "noResults" ? (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsTitle}>No markets found</Text>
+              <Text style={styles.noResultsText}>
+                Try a different search or category.
+              </Text>
+            </View>
+          ) : null
         }
         refreshControl={
           <RefreshControl
@@ -328,6 +371,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+  },
+  stateContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+  },
+  stateTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  stateSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: "center",
   },
   loadingText: {
     ...typography.caption,

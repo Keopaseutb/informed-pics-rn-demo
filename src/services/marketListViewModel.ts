@@ -5,6 +5,13 @@ export type MarketListItem =
   | { type: "header"; key: string; title: string }
   | { type: "item"; key: string; market: Market };
 
+export type MarketListState =
+  | "loading"
+  | "empty"
+  | "error"
+  | "noResults"
+  | "ready";
+
 type BuildMarketListViewModelArgs = {
   markets: Market[];
   categories: string[];
@@ -15,6 +22,24 @@ type BuildMarketListViewModelArgs = {
 
 export const normalizeMarketSearchQuery = (query: string): string =>
   query.trim().toLowerCase();
+
+export const deriveMarketListState = ({
+  loading,
+  hasError,
+  marketCount,
+  flatDataCount,
+}: {
+  loading: boolean;
+  hasError: boolean;
+  marketCount: number;
+  flatDataCount: number;
+}): MarketListState => {
+  if (loading) return "loading";
+  if (hasError) return "error";
+  if (marketCount === 0) return "empty";
+  if (flatDataCount === 0) return "noResults";
+  return "ready";
+};
 
 const marketMatchesQuery = (market: Market, query: string): boolean => {
   if (!query) return true;
