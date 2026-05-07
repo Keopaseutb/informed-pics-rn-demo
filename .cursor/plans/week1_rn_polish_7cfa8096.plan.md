@@ -4,28 +4,28 @@ overview: Plan Week 1 around search, filters, and complete product states while 
 todos:
   - id: week1-doc-plan
     content: Document Week 1 branch scope, commit cadence, and deferred polish
-    status: pending
+    status: completed
   - id: week1-search-input
     content: Add MarketsScreen search input with local query state and accessibility labels
-    status: pending
+    status: completed
   - id: week1-debounce-filter
     content: Implement debounced search and memoized derived filtering
-    status: pending
+    status: completed
   - id: week1-filter-chips
     content: Add category filter chips and no-results UI
-    status: pending
+    status: completed
   - id: week1-viewmodel
     content: Refactor list reads into a coherent selector/view-model and clarify ordering contracts
-    status: pending
+    status: completed
   - id: week1-states
     content: Define state model, then add loading, empty, error, refresh cleanup, and dev invariant handling
-    status: pending
+    status: completed
   - id: week1-tests
     content: Add pure TypeScript tests for search/filter logic
-    status: pending
+    status: completed
   - id: week1-readme
     content: Update README and manual checklist for Week 1 product states
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -36,6 +36,23 @@ Use branch `feat/week1-rn-product-states`.
 
 ## Goal
 Make the app feel more product-shaped by improving the market list experience: search, filters, loading/empty/error/no-results states, deterministic derived state, and small accessibility polish on touched surfaces.
+
+## Week 1 delivery status
+
+All eight commits in **Commit Cadence** are implemented on `feat/week1-rn-product-states`. The YAML todos above are **completed**.
+
+| Planned item | Where it landed |
+| --- | --- |
+| Plan + scope (commit 1) | This file under `.cursor/plans/` |
+| Search input + a11y | `src/screens/MarketsScreen.tsx` |
+| Debounce + `buildMarketListViewModel` | `MarketsScreen.tsx`, `src/services/marketListViewModel.ts` |
+| Category chips + no-results | `MarketsScreen.tsx`, view-model |
+| `getMarketListData`, selector contract, Debug hint | `src/services/marketRepository.ts`, `src/services/selectors.ts`, `src/navigation/RootNavigator.tsx` |
+| `deriveMarketListState`, full states, refresh + dev warning | `marketListViewModel.ts`, `MarketsScreen.tsx` |
+| Pure TS tests | `src/services/marketListViewModel.test.ts` (plus existing `odds.test.ts`, `order.test.ts`) |
+| README + manual checklist | `README.md` **Markets list (Week 1)** and **Testing checklist** |
+
+**Optional (not required to close Week 1):** Capture new screenshots that include the markets search row; README already notes shots may predate that control. Revisit real-dataset **eventlabel** search noise if product feedback asks for it.
 
 ## Week 1 State Model
 Define this explicitly before coding the state-handling commit:

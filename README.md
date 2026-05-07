@@ -25,6 +25,37 @@ It demonstrates:
 
 The repository layer owns data loading, validation, caching, and time ordering. Selectors receive repository data as already sorted and should only partition or shape it for presentation.
 
+The markets list screen reads a single snapshot from `getMarketListData()` (markets, categories, grouped rows). **Filtering and flat list layout** are handled by the pure helper `buildMarketListViewModel(...)` in `src/services/marketListViewModel.ts`. **Which full-screen state to show** (`loading`, `error`, `empty`, `noResults`, `ready`) is decided by `deriveMarketListState(...)` from counts and a blocking-validation flag; the screen owns what counts as a blocking data error.
+
+## Markets list (Week 1)
+
+**Search**
+
+- Debounced text search (typing does not rebuild the list on every keystroke).
+- Case-insensitive match after trim; internal spacing is left as typed.
+- Fields matched: player name, category, question, event label (substring match, no fuzzy search in Week 1).
+
+**Category filters**
+
+- Chips are **All** plus every category from the full dataset (not narrowed by the current search).
+- Single-select: one category or All.
+
+**Product states**
+
+| State | When | Controls |
+| --- | --- | --- |
+| `loading` | Initial simulated load (`DEMO_LATENCY_MS`) | Search and chips hidden |
+| `error` | Blocking validation: zero valid rows and validation errors | Full-screen message |
+| `empty` | Repository returned no markets | Full-screen message |
+| `noResults` | Data exists but search/category yields no rows | Search and chips stay visible; empty list shows “No markets found” |
+| `ready` | At least one visible row | Normal list |
+
+Partial validation issues are surfaced in **Debug parity**; they do not alone force the list into `error` if some markets are still valid.
+
+**Pull-to-refresh**
+
+- Preserves the current search text and selected category; only the refresh indicator is simulated.
+
 ## Runtime support model
 
 **Primary supported setup:** Expo Go on **Expo SDK 54**
@@ -96,6 +127,9 @@ That path is currently considered experimental compared with the primary Expo Go
 | fontScale-aware getItemLayout | Accessible Large Text behavior | Accessibility |
 | removeClippedSubviews Android-only | Avoid iOS shadow clipping | Cross-platform parity |
 | Primitive props to MarketCard | Correct memoization | Performance |
+| Debounced search + category chips | Scalable list UX | Product / performance |
+| Explicit list states (loading, empty, error, no-results, ready) | Clear unhappy-path behavior | Product thinking |
+| `buildMarketListViewModel` + unit tests | Testable list logic | Quality / architecture |
 
 ## Accessibility note
 
@@ -103,15 +137,41 @@ That path is currently considered experimental compared with the primary Expo Go
 
 ## Testing checklist
 
-- Markets list renders
-- Market detail opens
-- Vig tooltip appears
-- Order ticket validation works
-- Debug parity screen loads
+**Markets (Week 1)**
+
+- Initial loading state, then list populates
+- Search narrows results after debounce; clear search shows full list again
+- Category chip filters to one section; **All** shows every category with data
+- No matches: “No markets found” appears **below** search and chips; change query or chip to recover
+- Pull-to-refresh runs without clearing search or selected category
+
+**Existing flows**
+
+- Market detail opens from the list
+- Vig tooltip appears on detail
+- Order ticket validation works (empty stake, etc.)
+- Debug parity screen loads (validation + platform checks)
+
+Automated checks: `npm run typecheck` and `npm test` (includes `marketListViewModel` search/state coverage).
 
 ## Screenshots
 
-- [Markets list](docs/screenshots/IMG_1701-2fa663fc-1472-4a8f-87dc-9178bab88ae2.jpg)
+### Week 1 — Markets search, filters, and no-results (manual verification)
+
+These PNGs show the current markets header search row, category chips, and list / empty states.
+
+| What it shows | File |
+| --- | --- |
+| Search **“austin”** with **All** selected — player match across multiple categories (e.g. Austin Hooper) | [Open](docs/screenshots/week1-markets-search-austin-all-categories.png) |
+| **Longest Reception** chip only, empty search — category-scoped list and section header | [Open](docs/screenshots/week1-markets-category-longest-reception.png) |
+| **No results** — query **“Austin”** with **Interceptions Thrown** selected; message stays below search and chips | [Open](docs/screenshots/week1-markets-no-results-austin-vs-interceptions.png) |
+| **No results** — query **“maye”** with **Longest Reception** selected; iOS keyboard with search return key | [Open](docs/screenshots/week1-markets-no-results-maye-longest-reception.png) |
+
+### Earlier captures (list, detail, ticket, debug, history)
+
+Older JPGs predate Week 1 list polish but still illustrate detail and supporting flows.
+
+- [Markets list (legacy)](docs/screenshots/IMG_1701-2fa663fc-1472-4a8f-87dc-9178bab88ae2.jpg)
 - [Market detail](docs/screenshots/IMG_1707-4e14100b-4454-4c25-a8bc-248c334541ba.jpg)
 - [Order ticket](docs/screenshots/IMG_1706-83df22d0-6609-4ba7-bd78-fbc1f119d423.jpg)
 - [Debug parity](docs/screenshots/IMG_1710-e155fe7a-cc91-4cf0-a6be-6cb9de6dd5c6.jpg)
