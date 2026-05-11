@@ -2,9 +2,16 @@ import rawMarkets from "../data/markets.json";
 import { Market } from "../types/market";
 import { validateMarkets } from "../utils/guards";
 
+export type MarketListData = {
+  markets: Market[];
+  categories: string[];
+  grouped: Record<string, Market[]>;
+};
+
 let cachedMarkets: Market[] | null = null;
 let cachedCategories: string[] | null = null;
 let cachedGrouped: Record<string, Market[]> | null = null;
+let cachedListData: MarketListData | null = null;
 let validationErrors: string[] = [];
 
 const loadMarkets = (): Market[] => {
@@ -39,6 +46,16 @@ export const getGroupedByCategory = (): Record<string, Market[]> => {
   });
   cachedGrouped = grouped;
   return cachedGrouped;
+};
+
+export const getMarketListData = (): MarketListData => {
+  if (cachedListData) return cachedListData;
+  cachedListData = {
+    markets: getMarkets(),
+    categories: getCategories(),
+    grouped: getGroupedByCategory(),
+  };
+  return cachedListData;
 };
 
 export const getValidationResults = () => {

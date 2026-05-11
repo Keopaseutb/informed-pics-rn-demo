@@ -19,6 +19,10 @@ export const selectMarketHeader = (market: Market) => {
   };
 };
 
+/**
+ * The time series repository owns chronological ordering. This selector only
+ * partitions the already-sorted points and preserves repository order.
+ */
 export const selectSeriesBySide = (points: ParsedTimePoint[]) => {
   const overPoints = points.filter((point) => point.side === "over");
   const underPoints = points.filter((point) => point.side === "under");

@@ -27,6 +27,7 @@ export const RootNavigator = () => {
               onPress={() => navigation.navigate("DebugParity")}
               accessibilityRole="button"
               accessibilityLabel="Open debug parity"
+              accessibilityHint="Opens debug parity checks for the demo"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={{ ...typography.caption, color: colors.textSecondary }}>
