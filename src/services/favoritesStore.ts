@@ -1,5 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { Market } from "../types/market";
 
 export type FavoriteId = Market["propid"];
@@ -110,6 +108,12 @@ export const createFavoritesStore = ({
 let cachedStore: FavoritesStore | null = null;
 export const getFavoritesStore = (): FavoritesStore => {
   if (cachedStore) return cachedStore;
+  // Avoid importing AsyncStorage at module load time so Jest can import this file
+  // without requiring the native module. This keeps `createFavoritesStore` and
+  // pure helpers testable in a plain JS environment.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const asyncStorageModule = require("@react-native-async-storage/async-storage");
+  const AsyncStorage = asyncStorageModule.default ?? asyncStorageModule;
   cachedStore = createFavoritesStore({ storage: AsyncStorage });
   return cachedStore;
 };
