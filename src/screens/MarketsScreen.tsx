@@ -17,7 +17,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/nav";
-import { MarketCard } from "../components/MarketCard";
+import {
+  MarketCard,
+  MARKET_CARD_FIXED_HEIGHT,
+} from "../components/MarketCard";
 import { colors, spacing, typography } from "../theme";
 import {
   getMarketListData,
@@ -28,18 +31,21 @@ import {
   deriveMarketListState,
   MarketListItem,
 } from "../services/marketListViewModel";
+import { useFavorites } from "../hooks/useFavorites";
+import { selectIsFavorite } from "../services/favoritesStore";
 
 const DEMO_LATENCY_MS = 250;
 const SEARCH_DEBOUNCE_MS = 200;
 const ALL_CATEGORIES = "All";
 const HEADER_HEIGHT = 36;
-const CARD_HEIGHT = 210;
+const CARD_HEIGHT = MARKET_CARD_FIXED_HEIGHT;
 const CARD_ROW_HEIGHT = CARD_HEIGHT + spacing.sm * 2;
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, "Markets">;
 
 export const MarketsScreen = () => {
   const navigation = useNavigation<Navigation>();
+  const { favorites, toggleFavorite } = useFavorites();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,11 +156,13 @@ export const MarketsScreen = () => {
           yesProbNorm={meta.yesProbNorm}
           noProbNorm={meta.noProbNorm}
           fixedHeight={allowItemLayout}
+          isFavorite={selectIsFavorite(favorites, market.propid)}
+          onFavoriteToggle={() => toggleFavorite(market.propid)}
           onPress={handlePress}
         />
       );
     },
-    [allowItemLayout, handlePress, marketMeta]
+    [allowItemLayout, favorites, handlePress, marketMeta, toggleFavorite]
   );
 
   const onRefresh = useCallback(() => {

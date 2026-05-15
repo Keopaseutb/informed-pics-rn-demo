@@ -25,12 +25,16 @@ import {
   formatPct,
   normalizeYesNo,
 } from "../utils/odds";
+import { FavoriteToggle } from "../components/FavoriteToggle";
+import { useFavorites } from "../hooks/useFavorites";
+import { selectIsFavorite } from "../services/favoritesStore";
 
 type DetailRoute = RouteProp<RootStackParamList, "MarketDetail">;
 
 export const MarketDetailScreen = () => {
   const { params } = useRoute<DetailRoute>();
   const [ticketOpen, setTicketOpen] = useState(false);
+  const { favorites, toggleFavorite } = useFavorites();
 
   const market = getMarketById(params.propId);
   const series = getTimeSeriesForProp(params.propId);
@@ -66,7 +70,14 @@ export const MarketDetailScreen = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.event}>{market.eventlabel}</Text>
       <Text style={styles.time}>{formatGameTime(market.startsat)}</Text>
-      <Text style={styles.player}>{market.playername}</Text>
+      <View style={styles.playerRow}>
+        <Text style={[styles.player, styles.playerText]}>{market.playername}</Text>
+        <FavoriteToggle
+          isFavorite={selectIsFavorite(favorites, params.propId)}
+          onToggle={() => toggleFavorite(params.propId)}
+          marketLabel={market.playername}
+        />
+      </View>
       <Text style={styles.category}>{market.category}</Text>
 
       <Text style={styles.caption}>
@@ -159,10 +170,20 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
+  playerRow: {
+    marginTop: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+  },
+  playerText: {
+    flex: 1,
+    minWidth: 0,
+  },
   player: {
     ...typography.title,
     color: colors.textPrimary,
-    marginTop: spacing.md,
   },
   category: {
     ...typography.caption,

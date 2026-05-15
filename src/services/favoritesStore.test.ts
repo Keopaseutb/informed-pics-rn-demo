@@ -244,3 +244,60 @@ describe("favoritesStore", () => {
   });
 });
 
+describe("favorites list/detail composition", () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it("maps each market row to isFavorite from favorites state", () => {
+    const {
+      createEmptyFavoritesState,
+      toggleFavorite,
+      selectIsFavorite,
+    } = loadFavoritesModule();
+
+    const markets = [{ propid: 101 }, { propid: 102 }, { propid: 103 }];
+    let favorites = createEmptyFavoritesState();
+    favorites = toggleFavorite({
+      favorites,
+      marketId: 102,
+      nowIso: "2026-01-01T00:00:00.000Z",
+    });
+    favorites = toggleFavorite({
+      favorites,
+      marketId: 103,
+      nowIso: "2026-01-02T00:00:00.000Z",
+    });
+
+    const rows = markets.map((m) => ({
+      propid: m.propid,
+      isFavorite: selectIsFavorite(favorites, m.propid),
+    }));
+
+    expect(rows).toEqual([
+      { propid: 101, isFavorite: false },
+      { propid: 102, isFavorite: true },
+      { propid: 103, isFavorite: true },
+    ]);
+  });
+
+  it("detail surface uses selectIsFavorite for the active prop id", () => {
+    const {
+      createEmptyFavoritesState,
+      toggleFavorite,
+      selectIsFavorite,
+    } = loadFavoritesModule();
+
+    let favorites = createEmptyFavoritesState();
+    favorites = toggleFavorite({
+      favorites,
+      marketId: 55,
+      nowIso: "2026-01-01T00:00:00.000Z",
+    });
+
+    const detailPropId = 55;
+    expect(selectIsFavorite(favorites, detailPropId)).toBe(true);
+    expect(selectIsFavorite(favorites, 56)).toBe(false);
+  });
+});
+

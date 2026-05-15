@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PropsWithChildren,
+} from "react";
 
 import type {
   FavoriteId,
@@ -18,23 +27,17 @@ export type UseFavoritesResult = {
   clearFavorites: () => void;
 };
 
-type UseFavoritesArgs = {
+export type UseFavoritesArgs = {
   store?: FavoritesStore;
   now?: () => string;
 };
 
-/**
- * Favorites hydration + persistence model:
- * - Non-blocking hydration: default empty favorites, then apply persisted snapshot when loaded.
- * - Hydration never clobbers user toggles that happen before load completes.
- * - Optimistic updates: UI updates immediately; persistence happens asynchronously.
- * - Persistence writes are serialized (last-write-wins ordering), but failures may still leave storage behind UI state.
- * - Write failures warn once in dev; there is no user-facing rollback/error yet (demo scope).
- */
-export const useFavorites = ({
+const FavoritesContext = createContext<UseFavoritesResult | null>(null);
+
+function useFavoritesEngine({
   store: storeArg,
   now: nowArg,
-}: UseFavoritesArgs = {}): UseFavoritesResult => {
+}: UseFavoritesArgs = {}): UseFavoritesResult {
   const store = useMemo(() => storeArg ?? getFavoritesStore(), [storeArg]);
   const now = useMemo(() => nowArg ?? (() => new Date().toISOString()), [nowArg]);
 
@@ -113,5 +116,45 @@ export const useFavorites = ({
   }, [store, warnWriteFailureOnce]);
 
   return { favorites, isHydrated, toggleFavorite, clearFavorites };
+}
+
+/**
+ * Owns a single favorites snapshot + hydration for the subtree. Mount once above
+ * navigation so list/detail screens share state (each screen must not call the
+ * engine hook separately).
+ *
+ * Gotchas for later:
+ * - Provider placement matters: any subtree outside this provider will hard-fail on `useFavorites()`.
+ * - Context updates rerender all consumers; fine for demo scale, but keep in mind if the app grows.
+ * - If this provider is moved into a subtree that remounts often, you'll reintroduce hydration churn.
+ */
+export const FavoritesProvider = ({
+  children,
+  store,
+  now,
+}: PropsWithChildren<UseFavoritesArgs>) => {
+  const value = useFavoritesEngine({ store, now });
+  return (
+    <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>
+  );
 };
 
+/**
+ * Reads shared favorites from {@link FavoritesProvider}.
+ *
+ * Hydration + persistence model:
+ * - Non-blocking hydration: default empty favorites, then apply persisted snapshot when loaded.
+ * - Hydration never clobbers user toggles that happen before load completes.
+ * - Optimistic updates: UI updates immediately; persistence happens asynchronously.
+ * - Persistence writes are serialized (last-write-wins ordering), but failures may still leave storage behind UI state.
+ * - Write failures warn once in dev; there is no user-facing rollback/error yet (demo scope).
+ */
+export const useFavorites = (): UseFavoritesResult => {
+  const ctx = useContext(FavoritesContext);
+  if (!ctx) {
+    throw new Error(
+      "useFavorites must be used within FavoritesProvider (wrap the navigator near App root)."
+    );
+  }
+  return ctx;
+};

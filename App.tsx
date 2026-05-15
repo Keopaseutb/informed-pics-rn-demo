@@ -4,6 +4,7 @@ import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { FavoritesProvider } from "./src/hooks/useFavorites";
 import { colors } from "./src/theme";
 
 const navTheme = {
@@ -22,7 +23,9 @@ export default function App() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <NavigationContainer theme={navTheme}>
-            <RootNavigator />
+            <FavoritesProvider>
+              <RootNavigator />
+            </FavoritesProvider>
           </NavigationContainer>
         </ErrorBoundary>
         <StatusBar style="light" />
