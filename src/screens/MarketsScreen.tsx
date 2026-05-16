@@ -33,6 +33,11 @@ import {
 } from "../services/marketListViewModel";
 import { useFavorites } from "../hooks/useFavorites";
 import { selectIsFavorite } from "../services/favoritesStore";
+import { getMarketDataFreshnessStore } from "../services/marketDataFreshnessStore";
+import {
+  deriveIsMarketsStale,
+  formatMarketsLastUpdatedLabel,
+} from "../services/marketsFreshness";
 
 const DEMO_LATENCY_MS = 250;
 const SEARCH_DEBOUNCE_MS = 200;
@@ -46,13 +51,21 @@ type Navigation = NativeStackNavigationProp<RootStackParamList, "Markets">;
 export const MarketsScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { favorites, toggleFavorite } = useFavorites();
+  const marketFreshnessStore = useMemo(() => getMarketDataFreshnessStore(), []);
+  const [lastUpdatedAtIso, setLastUpdatedAtIso] = useState<string | null>(null);
+  const [hasRefreshedThisSession, setHasRefreshedThisSession] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Demo-delay timer for pull-to-refresh (cleared when a new refresh supersedes). */
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Blocks setState after unmount (e.g. while `saveLastUpdatedAt` is in flight). */
+  const isMountedRef = useRef(true);
+  /** Last-wins refresh token; incremented on each pull and on unmount to drop superseded async work. */
+  const refreshSeqRef = useRef(0);
 
   const fontScale = PixelRatio.getFontScale();
   const allowItemLayout = fontScale <= 1.1;
@@ -168,13 +181,42 @@ export const MarketsScreen = () => {
   const onRefresh = useCallback(() => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
     }
 
+    const seq = ++refreshSeqRef.current;
     setRefreshing(true);
+
+    const isCurrentRefreshAttempt = () =>
+      isMountedRef.current && seq === refreshSeqRef.current;
+
     refreshTimerRef.current = setTimeout(() => {
-      setRefreshing(false);
       refreshTimerRef.current = null;
+      void (async () => {
+        try {
+          const iso = new Date().toISOString();
+          await marketFreshnessStore.saveLastUpdatedAt(iso);
+          if (!isCurrentRefreshAttempt()) return;
+          setLastUpdatedAtIso(iso);
+          setHasRefreshedThisSession(true);
+        } catch (err) {
+          if (__DEV__ && isCurrentRefreshAttempt()) {
+            console.warn("[markets] Failed to persist last refresh time.", err);
+          }
+        } finally {
+          if (isCurrentRefreshAttempt()) {
+            setRefreshing(false);
+          }
+        }
+      })();
     }, DEMO_LATENCY_MS);
+  }, [marketFreshnessStore]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -200,10 +242,30 @@ export const MarketsScreen = () => {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const iso = await marketFreshnessStore.loadLastUpdatedAt();
+        if (!cancelled && isMountedRef.current) setLastUpdatedAtIso(iso);
+      } catch (err) {
+        if (__DEV__) {
+          console.warn("[markets] Failed to load last refresh time.", err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [marketFreshnessStore]);
+
+  useEffect(() => {
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
       }
+      // Invalidate any in-flight refresh work (timer cleared before callback, or async after unmount).
+      refreshSeqRef.current += 1;
     };
   }, []);
 
@@ -247,6 +309,12 @@ export const MarketsScreen = () => {
     );
   }
 
+  const isMarketsStale = deriveIsMarketsStale(hasRefreshedThisSession);
+  const freshnessLabel = formatMarketsLastUpdatedLabel({
+    lastUpdatedAtIso,
+    nowMs: Date.now(),
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.searchRow}>
@@ -278,7 +346,24 @@ export const MarketsScreen = () => {
           {[ALL_CATEGORIES, ...marketListData.categories].map(renderCategoryChip)}
         </ScrollView>
       </View>
+      <View
+        style={styles.freshnessBanner}
+        accessibilityRole="text"
+        accessibilityLabel={
+          isMarketsStale
+            ? `Cached data. ${freshnessLabel}`
+            : freshnessLabel
+        }
+      >
+        {isMarketsStale ? (
+          <View style={styles.cachedPill}>
+            <Text style={styles.cachedPillText}>Cached data</Text>
+          </View>
+        ) : null}
+        <Text style={styles.freshnessMeta}>{freshnessLabel}</Text>
+      </View>
       <FlatList
+        style={styles.list}
         data={flatData}
         renderItem={renderItem}
         keyExtractor={(item) => item.key}
@@ -314,6 +399,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  list: {
+    flex: 1,
   },
   searchRow: {
     paddingHorizontal: spacing.md,
@@ -412,5 +500,31 @@ const styles = StyleSheet.create({
   headerText: {
     ...typography.subtitle,
     color: colors.textPrimary,
+  },
+  freshnessBanner: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
+  },
+  cachedPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: colors.surfaceElevated,
+  },
+  cachedPillText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: "600",
+  },
+  freshnessMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });
