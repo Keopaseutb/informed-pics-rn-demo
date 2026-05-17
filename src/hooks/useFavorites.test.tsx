@@ -1,4 +1,4 @@
-import type { MutableRefObject } from "react";
+import { memo, type MutableRefObject } from "react";
 import TestRenderer, { act } from "react-test-renderer";
 
 import type { UseFavoritesResult } from "./useFavorites";
@@ -25,6 +25,45 @@ describe("FavoritesProvider", () => {
     noopStore.save.mockClear();
     noopStore.clear.mockClear();
     noopStore.load.mockResolvedValue(null);
+  });
+
+  it("does not rerender consumers when provider rerenders with unchanged value", () => {
+    // Keep hydration from flipping isHydrated during this test.
+    const pending = new Promise<null>(() => {});
+    const store = {
+      load: jest.fn().mockReturnValue(pending),
+      save: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined),
+    };
+
+    let renders = 0;
+    const RenderCounter = memo(function RenderCounter() {
+      renders += 1;
+      useFavorites();
+      return null;
+    });
+
+    let renderer: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(
+        <FavoritesProvider store={store}>
+          <RenderCounter />
+        </FavoritesProvider>
+      );
+    });
+
+    act(() => {
+      renderer.update(
+        <FavoritesProvider store={store}>
+          <RenderCounter />
+        </FavoritesProvider>
+      );
+    });
+
+    expect(renders).toBe(1);
+    act(() => {
+      renderer.unmount();
+    });
   });
 
   it("shares favorites state across multiple consumers (detail ↔ list consistency)", async () => {

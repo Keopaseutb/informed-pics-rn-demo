@@ -115,7 +115,12 @@ function useFavoritesEngine({
       .catch((err) => warnWriteFailureOnce("clear", err));
   }, [store, warnWriteFailureOnce]);
 
-  return { favorites, isHydrated, toggleFavorite, clearFavorites };
+  const value = useMemo<UseFavoritesResult>(
+    () => ({ favorites, isHydrated, toggleFavorite, clearFavorites }),
+    [favorites, isHydrated, toggleFavorite, clearFavorites]
+  );
+
+  return value;
 }
 
 /**
